@@ -1,0 +1,20 @@
+---
+title: 'C4 · L1 — Контекст системы прогноза времени поиска'
+---
+flowchart TB
+  P["Пассажир<br/>[Person]<br/>Заказывает такси и ожидает назначения"]
+  A["Приложение Яндекс Go<br/>[External software system]<br/>Экран поиска машины"]
+  S["Система прогноза времени поиска<br/>[Software system]<br/>Рассчитывает прогноз, проверяет его<br/>и собирает фактические исходы"]
+  D["Система назначения водителей<br/>[External software system]<br/>Ищет водителя и фиксирует исход"]
+  M["Платформа рыночных данных<br/>[External software system]<br/>Агрегирует спрос и предложение"]
+  P -->|Оформляет заказ| A
+  A -->|Показывает таймер и итог| P
+  A -->|Запрашивает прогноз для заказа| S
+  S -->|Таймер или статус без таймера; итог| A
+  S -->|Запускает поиск| D
+  D -->|Время старта, назначение или отмена| S
+  M -->|Спрос, свободные водители, зона| S
+  classDef person fill:#173c5e,color:#ffffff,stroke:#173c5e;
+  classDef system fill:#1769aa,color:#ffffff,stroke:#104e80;
+  classDef external fill:#eef2f6,color:#24374b,stroke:#8293a4;
+  class P person; class S system; class A,D,M external;

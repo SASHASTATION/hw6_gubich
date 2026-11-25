@@ -1,0 +1,34 @@
+---
+title: 'BPMN — Прогноз времени назначения водителя (текстовое представление)'
+---
+flowchart LR
+  subgraph U["Дорожка: Пассажир / приложение Яндекс Go"]
+    direction TB
+    s((Старт)) --> u1["Оформить заказ"]
+    u2["Получить таймер или статус"]
+    u3["Получить итог поиска"] --> e(((Конец)))
+  end
+  subgraph O["Дорожка: Оркестратор прогноза"]
+    direction TB
+    b1["Запустить поиск водителя"]
+    g{"XOR<br/>Прогноз пригоден?"}
+    b2["Подготовить таймер"]
+    b3["Подготовить статус без таймера"]
+    j{"XOR<br/>Слияние"}
+    b4["Отправить состояние поиска"]
+    b5["Получить итог поиска"]
+    b6["Записать прогноз и исход"]
+  end
+  subgraph ML["Дорожка: ML API"]
+    direction TB
+    m["Рассчитать прогноз"]
+  end
+  u1 --> b1 --> m --> g
+  g -->|Да| b2 --> j
+  g -->|Нет: ошибка, тайм-аут или порог| b3 --> j
+  j --> b4 --> u2 --> b5 --> b6 --> u3
+  b6 -.-> note["Kafka → история → обучение<br/>order_id, snapshot_id, версия, исход и время"]
+  classDef event fill:#e2f4e7,stroke:#267047,color:#18462d;
+  classDef task fill:#e5f0fb,stroke:#4c7ca6,color:#143b5c;
+  classDef gateway fill:#fff4da,stroke:#a27425,color:#60430e;
+  class s,e event; class u1,u2,u3,b1,b2,b3,b4,b5,b6,m task; class g,j gateway;

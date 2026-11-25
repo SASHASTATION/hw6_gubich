@@ -1,0 +1,21 @@
+---
+title: 'C4 · L3 — Компоненты контейнера ML API'
+---
+flowchart TB
+  subgraph I["ML API · Python / FastAPI / CatBoost"]
+    direction TB
+    A["Prediction Endpoint<br/>[Component: FastAPI]<br/>Запрос и ответ Оркестратору прогноза"]
+    B["Feature Builder<br/>[Component: Python]<br/>Читает Redis; собирает X;<br/>устаревшие данные → ошибка"]
+    V["Model Resolver<br/>[Component: MLflow client]<br/>Читает alias champion в MLflow;<br/>загружает артефакт S3;<br/>нет модели → ошибка"]
+    P["Quantile Predictor<br/>[Component: CatBoost]<br/>Считает q10, q50, q90"]
+    C["Response Validator<br/>[Component: Python]<br/>Проверяет конечность и порядок квантилей"]
+    A -->|order_id, zone, tariff, t0| B
+    A -->|Запрос версии| V
+    B -->|X, snapshot_id| P
+    V -->|Модель и version| P
+    P -->|Квантили, X, snapshot_id, version| C
+    C -->|Валидный ответ или ошибка| A
+  end
+  classDef component fill:#dceefa,color:#143b5c,stroke:#5b92b9;
+  class A,B,V,P,C component;
+  style I fill:#f8fbff,stroke:#56748d,stroke-dasharray:5 4
