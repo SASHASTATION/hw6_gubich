@@ -1,39 +1,43 @@
 ---
-title: 'C4 · L2 — Контейнеры системы прогноза времени поиска'
+title: 'C4 · L2 — Контейнеры системы кредитного скоринга'
 ---
 flowchart TB
-  A["Приложение Яндекс Go<br/>[External system]"]
-  D["Система назначения водителей<br/>[External system]"]
-  M["Платформа рыночных данных<br/>[External system]"]
-  subgraph S["Система прогноза времени поиска · граница системы"]
+  U["Кредитный конвейер<br/>[External system]"]
+  D["Банковская платформа данных<br/>[External system]"]
+  B["БКИ<br/>[External system]"]
+  L["Система обслуживания кредитов<br/>[External system]"]
+  subgraph S["Система кредитного скоринга · граница системы"]
     direction TB
-    O["Оркестратор прогноза<br/>[Container: Go / REST]<br/>Ведёт запрос, проверяет прогноз, fallback"]
-    I["ML API<br/>[Container: Python / FastAPI / CatBoost]<br/>Возвращает квантили и версию модели"]
-    R[("Хранилище признаков<br/>[Container: Redis]<br/>Свежие агрегаты по зоне и тарифу")]
-    K["Шина событий<br/>[Container: Kafka]<br/>Рынок, прогнозы, исходы"]
-    F["Пайплайн данных<br/>[Container: Spark Structured Streaming]<br/>Агрегация и сохранение истории"]
-    H[("Историческое хранилище<br/>[Container: S3 / Parquet]<br/>Снимки, исходы, артефакты моделей")]
-    T["Обучение модели<br/>[Container: Airflow worker / Python]<br/>Train, validation, публикация"]
-    G["Реестр моделей<br/>[Container: MLflow]<br/>Версии и alias champion"]
-    O -->|Запрос прогноза / REST| I
-    I -->|Квантили, X, snapshot_id, версия| O
-    I -->|Читает свежие признаки| R
-    I -->|Читает champion| G
+    O["Оркестратор скоринга<br/>[Container: Java / REST]<br/>Проверка согласия, вызов ML API,<br/>сохранение результата и fallback"]
+    I["ML API<br/>[Container: Python / FastAPI / CatBoost]<br/>Сбор признаков, PD, скор, валидация"]
+    R[("Online Feature Store<br/>[Container: PostgreSQL]<br/>Актуальные финансовые агрегаты")]
+    A[("Журнал скоринга<br/>[Container: PostgreSQL]<br/>Результаты и transactional outbox")]
+    K["Шина событий<br/>[Container: Kafka]<br/>Скоринг, исходы, платежи"]
+    F["Пайплайн данных<br/>[Container: Spark / Airflow]<br/>Агрегаты, история, формирование меток"]
+    H[("Историческое хранилище<br/>[Container: S3 / Parquet]<br/>Снимки признаков, метки, артефакты")]
+    T["Обучение и валидация<br/>[Container: Python / Airflow worker]<br/>Train, calibration, quality gate"]
+    G["Реестр моделей<br/>[Container: MLflow]<br/>Версии, alias champion"]
+    O -->|Данные заявки, подтверждение согласия| I
+    I -->|PD, скор, snapshot, версия или ошибка| O
+    I -->|Читает признаки на момент заявки| R
+    I -->|Разрешает alias champion| G
     I -->|Загружает артефакт по URI| H
-    O -->|Снимок X, прогноз, исход| K
-    K -->|Читает события| F
-    F -->|Обновляет агрегаты| R
-    F -->|Пишет историю| H
-    T -->|Читает датасет; пишет артефакт| H
-    T -->|Регистрирует и продвигает версию| G
+    O -->|Атомарно пишет результат и outbox| A
+    O -->|Публикует outbox, повторяет при сбое| K
+    K -->|События скоринга и погашений| F
+    F -->|Обновляет финансовые агрегаты| R
+    F -->|Сохраняет снимки и метки| H
+    T -->|Читает датасет и пишет артефакт| H
+    T -->|Регистрирует модель, после проверки champion| G
   end
-  A -->|Заказ| O
-  O -->|Таймер или статус; итог| A
-  O -->|Начать поиск| D
-  D -->|Старт и исход поиска| O
-  M -->|Рыночные события| K
+  U -->|Заявка, согласие, итог рассмотрения| O
+  O -->|PD, скор, статус или направление на ручную обработку| U
+  I -->|Запрос отчёта с подтверждением согласия| B
+  B -->|Отчёт или ошибка| I
+  D -->|Финансовые данные| F
+  L -->|Выдачи, платежи, просрочки| K
   classDef container fill:#1769aa,color:#ffffff,stroke:#104e80;
   classDef storage fill:#dceefa,color:#143b5c,stroke:#5b92b9;
   classDef external fill:#eef2f6,color:#24374b,stroke:#8293a4;
-  class O,I,K,F,T,G container; class R,H storage; class A,D,M external;
+  class O,I,K,F,T,G container; class R,A,H storage; class U,D,B,L external;
   style S fill:#f8fbff,stroke:#56748d,stroke-dasharray:5 4

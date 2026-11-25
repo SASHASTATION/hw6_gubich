@@ -1,21 +1,23 @@
 ---
-title: 'C4 · L3 — Компоненты контейнера ML API'
+title: 'C4 · L3 — Компоненты ML API кредитного скоринга'
 ---
 flowchart TB
   subgraph I["ML API · Python / FastAPI / CatBoost"]
     direction TB
-    A["Prediction Endpoint<br/>[Component: FastAPI]<br/>Запрос и ответ Оркестратору прогноза"]
-    B["Feature Builder<br/>[Component: Python]<br/>Читает Redis; собирает X;<br/>устаревшие данные → ошибка"]
-    V["Model Resolver<br/>[Component: MLflow client]<br/>Читает alias champion в MLflow;<br/>загружает артефакт S3;<br/>нет модели → ошибка"]
-    P["Quantile Predictor<br/>[Component: CatBoost]<br/>Считает q10, q50, q90"]
-    C["Response Validator<br/>[Component: Python]<br/>Проверяет конечность и порядок квантилей"]
-    A -->|order_id, zone, tariff, t0| B
-    A -->|Запрос версии| V
-    B -->|X, snapshot_id| P
-    V -->|Модель и version| P
-    P -->|Квантили, X, snapshot_id, version| C
-    C -->|Валидный ответ или ошибка| A
+    A["Scoring Endpoint<br/>[Component: FastAPI]<br/>Принимает запрос Оркестратора;<br/>возвращает результат или ошибку"]
+    B["Feature Builder<br/>[Component: Python]<br/>Читает Online Feature Store и БКИ;<br/>проверяет согласие, свежесть и схему"]
+    V["Model Resolver<br/>[Component: MLflow client]<br/>Выбирает champion из MLflow;<br/>загружает модель и калибратор из S3"]
+    P["PD Predictor<br/>[Component: CatBoostClassifier]<br/>Вычисляет и калибрует PD за 12 месяцев"]
+    Q["Score Mapper<br/>[Component: Python]<br/>Преобразует PD в скор 0–1000"]
+    C["Response Validator<br/>[Component: Python]<br/>Проверяет диапазоны, версию, тайм-аут;<br/>невалидный ответ отклоняет"]
+    A -->|Заявка, согласие, t0| B
+    A -->|Запрос версии для продукта| V
+    B -->|X, snapshot_id или ошибка| P
+    V -->|Модель, калибратор, версия или ошибка| P
+    P -->|PD, snapshot_id, версия| Q
+    Q -->|PD, скор, метаданные| C
+    C -->|Результат или статус ошибки| A
   end
   classDef component fill:#dceefa,color:#143b5c,stroke:#5b92b9;
-  class A,B,V,P,C component;
+  class A,B,V,P,Q,C component;
   style I fill:#f8fbff,stroke:#56748d,stroke-dasharray:5 4
