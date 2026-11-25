@@ -157,6 +157,19 @@
 
 ## 10. Файлы и просмотр
 
+| Схема | Исходник | Изображение |
+|---|---|---|
+| BPMN | `bpmn.bpmn`, `bpmn.mmd` | `bpmn.svg` |
+| C4 Context | `c4-context.mmd` | `c4-context.svg` |
+| C4 Containers | `c4-containers.mmd` | `c4-containers.svg` |
+| C4 Components | `c4-components.mmd` | `c4-components.svg` |
+
+Все схемы расположены в директории `diagrams/`.
+
+- `.bpmn` — Camunda Modeler.
+- `.mmd` — Mermaid Live Editor.
+- `.svg` — браузер или GitHub.## 10. Файлы и просмотр
+
 | Схема | Исходный файл | Изображения |
 |---|---|---|
 | BPMN | [bpmn.bpmn](diagrams/bpmn.bpmn), [bpmn.mmd](diagrams/bpmn.mmd) | [SVG](diagrams/bpmn.svg), [PNG](diagrams/bpmn.png) |
